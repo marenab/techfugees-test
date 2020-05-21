@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta charset="utf-8" />
+	<title>Techfugees COVID-19 Map</title>
+	<meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.0/jquery.min.js"></script>
+  	<script src="https://api.mapbox.com/mapbox-gl-js/v1.9.1/mapbox-gl.js"></script>
+  	<link href="https://api.mapbox.com/mapbox-gl-js/v1.9.1/mapbox-gl.css" rel="stylesheet" />
+  	<script src='https://npmcdn.com/csv2geojson@latest/csv2geojson.js'></script>
+  	<script src='https://npmcdn.com/@turf/turf/turf.min.js'></script>
+	<link href="https://fonts.googleapis.com/css?family=Barlow&display=swap" rel="stylesheet">
+	<link href="https://api.mapbox.com/mapbox-assembly/v0.24.0/assembly.min.css" rel="stylesheet">
+
+	<style>
+		* {
+			box-sizing: border-box;
+		}
+
+		html,
+		body {
+			height: 100%;
+		}
+
+		body {
+			margin: 0;
+			padding: 0;
+			font-family: 'Barlow', sans-serif;
+		}
+
+		#map {
+			height: 100%;
+		}
+
+		#sidebar {
+			width: 100%;
+			height: 33%;
+			padding: 20px;
+			display: grid;
+			grid-template-columns: 30% 30%;
+			grid-gap: 20%;
+			background-color: #dee9ec;
+			-webkit-box-shadow: -2px -13px 43px 2px rgba(189,189,189,.3);
+			-moz-box-shadow: -2px -13px 43px 2px rgba(189,189,189,.3);
+			box-shadow: -2px -13px 43px 2px rgba(189,189,189,.3);
+			z-index: 3;
+
+		}
+
+		#sidebar .badge {
+			padding-left: 5px;
+			padding-right: 10px;
+			border-radius: 100%;
+			margin-right: 5px;
+		}
+
+
+		.heading {
+			font-weight: bold;
+		}
+
+		.mapboxgl-popup-content {
+			font-family: 'Barlow', sans-serif;
+		}
+
+
+		.map-info {
+			position: absolute;
+			top: 10px;
+			left: 10px;
+			z-index: 3;
+			padding: 10px;
+		}
+
+		.flex-parent {
+			flex-flow: column-reverse;
+		}
+
+		.bg-wck-green {
+			background-color: #8cc540;
+		}
+
+		.bg-wck-orange {
+			background-color: #e86027;
+		}
+
+		input:checked + .switch--wck-purple {
+			background-color: #9e2064;
+		}
+
+		.switch--wck-purple {
+			color: #9e2064;
+		}
+
+		input:checked + .switch--wck-blue {
+			background-color: #1565ad;
+		}
+
+		.switch--wck-blue {
+			color: #1565ad;
+		}
+
+		input:checked+.switch--dot-yellow::after, input:checked+.switch--yellow {
+			color: #fab818;
+		}
+
+		.labels {
+			background-color: rgba(245, 245, 245, 0.70);
+			padding: 10px 10px 15px 10px;
+			display: flex;
+			flex-flow: column;
+		}
+
+		.switch-container {
+			margin-top: 8px;
+		}
+
+
+	</style>
+</head>
+
+<body class="prose flex-parent">
+	<div class="flex-child" id="sidebar">
+		<h4>Click on points or a country for more information</h4>
+	</div>
+	<div class="flex-child--grow" id="map">
+		<div class="map-info">
+			<div class="labels">
+				<label class='switch-container'>
+					<input disabled id="toggle" type='checkbox' />
+					<div class='switch switch--wck-purple switch--dot-yellow mr6'></div>
+					<b>COVID-19 Cases</b>
+				</label>
+				<label class='switch-container'>
+					<input disabled id="toggle-drop" type='checkbox' />
+					<div class='switch switch--wck-blue switch--dot-yellow mr6'></div>
+					<b>Country policies</b>
+				</label>
+			</div>
+		</div>
+
+	</div>
+
+	<script>
+
+		//Replace with access token
+		mapboxgl.accessToken = 'pk.eyJ1IjoidGVjaGZ1Z2VlcyIsImEiOiJjazlpaGdpNmUwMGMzM2RscjhuZWt0bTkwIn0.-ZRtFRTymVIQAO7imr2Thw';
+		const map = new mapboxgl.Map({
+			container: 'map', // container id
+			style: 'mapbox://styles/mapbox/streets-v11', // stylesheet location
+			center: [27.425, 13.526], // starting position [lng, lat]
+			zoom: 1.2, // starting zoom
+		});
+
+		$(document).ready(function () {
+      $.ajax({
+        type: "GET",
+        //Replace with csv export link for Google spreadsheet
+        url: 'https://docs.google.com/spreadsheets/d/1yHHMyuD6MB7TCQCvtK4XagVofnaaWLN1l3dT5nW2Mw/gviz/tq?tqx=out:csv&sheet=Sheet1',
+        dataType: "text",
+        success: function (csvData) { makeGeoJSON(csvData); }
+      });
+
+
+
+      function makeGeoJSON(csvData) {
+        csv2geojson.csv2geojson(csvData, {
+          latfield: 'Latitude',
+          lonfield: 'Longitude',
+          delimiter: ','
+        }, function (err, data) {
+          map.on('load', function () {
+
+            //Add the the layer to the map 
+            map.addLayer({
+              'id': 'csvData',
+              'type': 'circle',
+              'source': {
+                'type': 'geojson',
+                'data': data
+              },
+              'paint': {
+                'circle-radius': 5,
+                'circle-color': "purple"
+              }
+            });
+			});
+		});
+		};
+		});
+
+map.addControl(new mapboxgl.NavigationControl());
+
+		//const toggle = document.getElementById('toggle');
+		//const toggleDrop = document.getElementById('toggle-drop');
+		//let visible = false;
+		//let hoveredStateId = null;
+		//const ids = [];
+
+		// map.addControl(new mapboxgl.FullscreenControl());
+
+//Previous code from WCK map using Tabletop instead of csv2geojson
+		//map.on('load', () => {
+			//Tabletop.init({
+				//key: '1UgnKWTR3T7x0fCXta8AhDtEBh1mHe_PCgZrdLmO1FZ8',
+				//simpleSheet: false
+			//}).then(function(data, tabletop) {
+				//const dropoffs = data['WCK Meal Locations'].elements;
+				//const restaurants = data['Restaurants'].elements
+				//const geojson = {
+					//'type': 'FeatureCollection',
+					//'features': []
+				//};
+				//const geojsonDrop = {
+					//'type': 'FeatureCollection',
+					//'features': []
+				//};
+				//restaurants.forEach((row) => {
+					//const f = {
+						//'type': 'Feature',
+						//'geometry': {
+							//'type': 'Point',
+							//'coordinates': [parseFloat(row['Longitude']), parseFloat(row['Latitude'])]
+						//},
+						//'properties': {
+						//	...row
+						//}
+					//}
+					//geojson.features.push(f)
+				//})
+
+				//dropoffs.forEach((row) => {
+					//const f = {
+						//'type': 'Feature',
+						//'geometry': {
+							//'type': 'Point',
+							//'coordinates': [parseFloat(row['Longitude']), parseFloat(row['Latitude'])]
+						//},
+						//'properties': {
+							//...row
+						//}
+					//}
+					//geojsonDrop.features.push(f)
+				//})
+				//initFeatureState(geojson, geojsonDrop)
+			//})
+
+			//const initFeatureState = (geojson, geojsonDrop) => {
+				//toggle.disabled = false;
+				//toggleDrop.disabled = false;
+				//map.addSource('schools', {
+					//type: 'vector',
+					//url: 'mapbox://wckhbase.wckreport'
+				//})
+
+				//map.addSource('states', {
+					//type: 'vector',
+					//url: 'mapbox://mapbox.hist-pres-election-state'
+				//})
+
+				//map.addSource('restaurants', {
+					//type: 'geojson',
+					//data: geojson
+				//})
+
+				//map.addSource('dropoffs', {
+					//type: 'geojson',
+					//data: geojsonDrop
+				//})
+
+				//map.addLayer({
+					//id: 'school-district',
+					//source: 'schools',
+					//'source-layer': 'wckreport',
+					//type: 'fill',
+					//paint: {
+						//'fill-color': ['case',
+							//['boolean', ['feature-state', 'hover'], false],
+							//'rgba(246, 139, 34, 1)',
+							//'rgba(246, 139, 34, .6)'
+						//]
+					//}
+				//}, 'waterway-label');
+
+
+				//map.addLayer({
+					//id: 'school-district-line',
+					//source: 'schools',
+					//'source-layer': 'wckreport',
+					//type: 'line',
+					//paint: {
+						//'line-color': 'white',
+						//'line-width': 1
+					//}
+				//}, 'waterway-label');
+
+				//map.addLayer({
+					//id: 'school-district-fill-hl',
+					//source: 'schools',
+					//'source-layer': 'wckreport',
+					//type: 'fill',
+					//paint: {
+						//'fill-color': 'rgba(246, 139, 34, 1)'
+					//},
+					//filter: ['==', ['get', 'geoid'], '']
+				//}, 'waterway-label');
+
+				//map.addLayer({
+					//id: 'school-district-line-hl',
+					//source: 'schools',
+					//'source-layer': 'wckreport',
+					//type: 'line',
+					//paint: {
+						//'line-color': '#9e2064',
+						//'line-width': 1
+					//},
+					//filter: ['==', ['get', 'geoid'], '']
+				//}, 'waterway-label');
+
+				//map.addLayer({
+					//id: 'states',
+					//source: 'states',
+					//'source-layer': 'historical_pres_elections_state',
+					//type: 'fill',
+					//paint: {
+						//'fill-color': 'rgba(21, 101, 173, 0.3)'
+					//},
+					//filter: ['==', ['get', 'state_name'], '']
+				//});
+
+				//map.addLayer({
+					//id: 'restaurants',
+					//source: 'restaurants',
+					//type: 'circle',
+					//paint: {
+						//'circle-color': '#9e2064',
+						//'circle-radius': 3,
+						//'circle-stroke-color': '#ffffff',
+						//'circle-stroke-width': 2
+					//},
+					//layout: {
+						//visibility: 'none'
+					//}
+				//});
+
+
+				// When the user moves their mouse over the state-fill layer, we'll update the
+				// feature state for the feature under the mouse.
+				//map.on('mousemove', 'school-district', function(e) {
+					//map.getCanvas().style.cursor = 'pointer';
+					//if (e.features.length > 0) {
+						//if (hoveredStateId) {
+							//map.setFeatureState({
+								//source: 'schools',
+								//'sourceLayer': 'wckreport',
+								//id: hoveredStateId
+							//}, {
+								//hover: false
+							//});
+						//}
+						//hoveredStateId = e.features[0].id;
+						//map.setFeatureState({
+							//source: 'schools',
+							//'sourceLayer': 'wckreport',
+							//id: hoveredStateId
+						//}, {
+							//hover: true
+						//});
+					//}
+				//});
+
+				//toggle.addEventListener('change', function(e) {
+					//if (map.getLayoutProperty('restaurants', 'visibility') === 'none') {
+						//map.setLayoutProperty('school-district', 'visibility', 'none');
+						//map.setLayoutProperty('school-district-line', 'visibility', 'none');
+						//map.setLayoutProperty('school-district-line-hl', 'visibility', 'none');
+						//map.setLayoutProperty('school-district-fill-hl', 'visibility', 'none');
+						//map.setLayoutProperty('restaurants', 'visibility', 'visible');
+					//} else if (map.getLayoutProperty('dropoffs', 'visibility') === 'visible' && map.getLayoutProperty('restaurants', 'visibility') === 'visible') {
+						//map.setLayoutProperty('restaurants', 'visibility', 'none');
+					//} else {
+						//map.setLayoutProperty('school-district', 'visibility', 'visible');
+						//map.setLayoutProperty('school-district-line', 'visibility', 'visible');
+						//map.setLayoutProperty('school-district-line-hl', 'visibility', 'visible');
+						//map.setLayoutProperty('school-district-fill-hl', 'visibility', 'visible');
+						//map.setLayoutProperty('restaurants', 'visibility', 'none');
+					//}
+				//})
+
+				//toggleDrop.addEventListener('change', function(e) {
+					//if (map.getLayoutProperty('dropoffs', 'visibility') === 'none') {
+						//map.setLayoutProperty('school-district', 'visibility', 'none');
+						//map.setLayoutProperty('school-district-line', 'visibility', 'none');
+						//map.setLayoutProperty('school-district-line-hl', 'visibility', 'none');
+						//map.setLayoutProperty('school-district-fill-hl', 'visibility', 'none');
+						//map.setLayoutProperty('dropoffs', 'visibility', 'visible');
+					//} else if (map.getLayoutProperty('dropoffs', 'visibility') === 'visible' && map.getLayoutProperty('restaurants', 'visibility') === 'visible') {
+						//map.setLayoutProperty('dropoffs', 'visibility', 'none');
+					//} else {
+						//map.setLayoutProperty('school-district', 'visibility', 'visible');
+						//map.setLayoutProperty('school-district-line', 'visibility', 'visible');
+						//map.setLayoutProperty('school-district-line-hl', 'visibility', 'visible');
+						//map.setLayoutProperty('school-district-fill-hl', 'visibility', 'visible');
+						//map.setLayoutProperty('dropoffs', 'visibility', 'none');
+					//}
+				//})
+
+				//map.on('click', 'school-district', function(e) {
+					//const {
+						//lunch,
+						//breakfast,
+						//dinner,
+						//feedurl,
+						//geoid,
+						//agencyname,
+						//weburl
+					//} = e.features[0].properties;
+
+					//const description =
+						//`
+						//<div>
+							//<h5>${agencyname}</h5>
+							//<p><a target="_blank" href="${weburl}">Website</a> | <a target="_blank" href="${feedurl}">Meals Information</a></p>
+						//</div>
+						//<div>
+							//<p><span class='badge ${breakfast == 'YES' ? 'bg-wck-green' : 'bg-wck-orange'}'>&nbsp;</span><span class="heading">Breakfast:</span> ${breakfast == 'null' ? 'NO' : breakfast}</p>
+							//<p><span class='badge ${lunch == 'YES' ? 'bg-wck-green' : 'bg-wck-orange'}'>&nbsp;</span><span class="heading">Lunch:</span> ${lunch == 'null' ? 'NO' : lunch}</p>
+							//<p><span class='badge ${dinner == 'YES' ? 'bg-wck-green' : 'bg-wck-orange'}'>&nbsp;</span><span class="heading">Dinner:</span> ${dinner == 'null' ? 'NO' : dinner}</p>
+						//</div>
+						//`
+					//document.getElementById('sidebar').innerHTML = description;
+					//map.setFilter('school-district-line-hl', ['==', ['get', 'geoid'], geoid])
+					//map.setFilter('school-district-fill-hl', ['==', ['get', 'geoid'], geoid])
+				//});
+
+
+				//map.on('click', 'restaurants', function(e) {
+					//const description = `
+						//<div>
+							//<h5>${e.features[0].properties['Company Name']}</h5>
+							//<p>${e.features[0].properties['Full Address']}</p>
+						//</div>
+						//<div>
+							//<p>${e.features[0].properties['Offer Terms']}</p>
+						//</div>
+						//`
+					//document.getElementById('sidebar').innerHTML = description;
+				//});
+
+				//map.on('mouseenter', 'restaurants', function() {
+					//map.getCanvas().style.cursor = 'pointer';
+				//});
+
+				//map.on('mouseleave', 'restaurants', function() {
+					//map.getCanvas().style.cursor = '';
+				//});
+
+				//map.on('click', 'dropoffs', function(e) {
+					//const description = `
+						//<div>
+							//<h5>${e.features[0].properties['Location Name']}</h5>
+							//<p>${e.features[0].properties['Full Address']}</p>
+
+						//</div>
+						//<div>
+							//<p>Start date: ${e.features[0].properties['Start Date']}</p>
+							//<p>Type: ${e.features[0].properties['Distr. / CK']}</p>
+							//<p>Location: ${e.features[0].properties['Type']}</p>
+						//</div>
+						//`
+					//document.getElementById('sidebar').innerHTML = description;
+				//});
+
+				//map.on('mouseenter', 'dropoffs', function() {
+					//map.getCanvas().style.cursor = 'pointer';
+				//});
+
+				//map.on('mouseleave', 'dropoffs', function() {
+					//map.getCanvas().style.cursor = '';
+				//});
+
+
+				// When the mouse leaves the state-fill layer, update the feature state of the
+				// previously hovered feature.
+				//map.on('mouseleave', 'school-district', function() {
+					//if (hoveredStateId) {
+						//map.setFeatureState({
+							//source: 'schools',
+							//'sourceLayer': 'wckreport',
+							//id: hoveredStateId
+						//}, {
+							//hover: false
+						//});
+					//}
+					//hoveredStateId = null;
+					//map.getCanvas().style.cursor = '';
+				//});
+
+			
+
+	</script>
+
+</body>
+
+</html>
